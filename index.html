@@ -13,13 +13,27 @@
       height: 100%;
       background: #111;
       touch-action: none;
+      color: white;
+      font-family: sans-serif;
     }
     canvas {
       display: block;
     }
+    #history {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 10px;
+      border-radius: 5px;
+      max-height: 100px;
+      overflow-y: auto;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
+  <div id="history">Notas:</div>
   <canvas id="touchCanvas"></canvas>
   <script>
     if ('serviceWorker' in navigator) {
@@ -33,10 +47,10 @@
           });
       });
     }
-  </script>
-  <script>
+
     const canvas = document.getElementById('touchCanvas');
     const ctx = canvas.getContext('2d');
+    const historyDiv = document.getElementById('history');
     let touches = {};
 
     function resizeCanvas() {
@@ -94,6 +108,15 @@
       }
     }
 
+    function addToHistory(note) {
+      const div = document.createElement('div');
+      div.textContent = note;
+      historyDiv.appendChild(div);
+      if (historyDiv.children.length > 10) {
+        historyDiv.removeChild(historyDiv.firstChild);
+      }
+    }
+
     function getOrientationMode() {
       if (window.DeviceOrientationEvent) {
         window.addEventListener('deviceorientation', (event) => {
@@ -113,6 +136,8 @@
         const freq = frequencyFromPosition(touch.clientY);
         const baseOsc = createOscillator(freq);
         let oscs = [baseOsc];
+        const note = noteFromFrequency(freq);
+        addToHistory(note);
 
         if (e.touches.length === 2) {
           const third = createOscillator(freq * Math.pow(2, 4/12));
@@ -161,3 +186,4 @@
   </script>
 </body>
 </html>
+
