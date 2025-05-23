@@ -30,8 +30,6 @@
       overflow-y: auto;
       font-size: 14px;
     }
-  </style>
-<style>
     #scaleSelector {
       position: absolute;
       top: 10px;
@@ -80,7 +78,7 @@
     resizeCanvas();
     document.getElementById('scaleSelector').addEventListener('change', drawGuideLines);
 
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let audioCtx = null;
 
     function createOscillator(freq) {
       const scale = document.getElementById('scaleSelector').value;
@@ -94,7 +92,6 @@
       const midiRaw = Math.round(69 + 12 * Math.log2(freq / 440));
       const baseMidi = midiRaw % 12;
       if (!allowedSemitones.includes(baseMidi)) {
-        // Encuentra la nota más cercana dentro de la escala
         let closest = allowedSemitones.reduce((prev, curr) =>
           Math.abs(curr - baseMidi) < Math.abs(prev - baseMidi) ? curr : prev
         );
@@ -150,7 +147,7 @@
 
       for (let i = 0; i < semitones.length; i++) {
         const semitone = semitones[i];
-        const midi = 60 + semitone; // comenzar en C4
+        const midi = 60 + semitone;
         const freq = 440 * Math.pow(2, (midi - 69) / 12);
         const percent = (freq - minFreq) / (maxFreq - minFreq);
         if (percent >= 0 && percent <= 1) {
@@ -163,10 +160,6 @@
           ctx.font = '12px sans-serif';
           ctx.fillText(noteNames[semitone], 10, y - 5);
         }
-      }
-        }
-      }
-    }
       }
     }
 
@@ -210,6 +203,9 @@
     }
 
     canvas.addEventListener('touchstart', (e) => {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
       e.preventDefault();
       for (let touch of e.changedTouches) {
         const freq = frequencyFromPosition(touch.clientY);
