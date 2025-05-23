@@ -31,8 +31,25 @@
       font-size: 14px;
     }
   </style>
+<style>
+    #scaleSelector {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      padding: 5px;
+      border-radius: 5px;
+    }
+  </style>
 </head>
 <body>
+  <select id="scaleSelector">
+    <option value="major">Escala Mayor</option>
+    <option value="minor">Escala Menor</option>
+    <option value="pentatonic">Pentatónica</option>
+    <option value="chromatic">Cromática</option>
+  </select>
   <div id="history">Notas:</div>
   <canvas id="touchCanvas"></canvas>
   <script>
@@ -56,14 +73,35 @@
     function resizeCanvas() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
+      drawGuideLines();
     }
 
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
+    document.getElementById('scaleSelector').addEventListener('change', drawGuideLines);
 
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
     function createOscillator(freq) {
+      const scale = document.getElementById('scaleSelector').value;
+      const scales = {
+        major:    [0, 2, 4, 5, 7, 9, 11],
+        minor:    [0, 2, 3, 5, 7, 8, 10],
+        pentatonic: [0, 2, 4, 7, 9],
+        chromatic: [0,1,2,3,4,5,6,7,8,9,10,11]
+      };
+      const allowedSemitones = scales[scale] || scales.major;
+      const midiRaw = Math.round(69 + 12 * Math.log2(freq / 440));
+      const baseMidi = midiRaw % 12;
+      if (!allowedSemitones.includes(baseMidi)) {
+        // Encuentra la nota más cercana dentro de la escala
+        let closest = allowedSemitones.reduce((prev, curr) =>
+          Math.abs(curr - baseMidi) < Math.abs(prev - baseMidi) ? curr : prev
+        );
+        const octave = Math.floor(midiRaw / 12);
+        const correctedMidi = (octave * 12) + closest;
+        freq = 440 * Math.pow(2, (correctedMidi - 69) / 12);
+      }
       const osc = audioCtx.createOscillator();
       osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
       const gain = audioCtx.createGain();
@@ -91,8 +129,49 @@
       return `hsl(${hue}, 100%, 50%)`;
     }
 
-    function drawTouches() {
+    function drawGuideLines() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.lineWidth = 1;
+
+      const minFreq = 200;
+      const maxFreq = 1000;
+      const scale = document.getElementById('scaleSelector').value;
+
+      const scales = {
+        major:    [0, 2, 4, 5, 7, 9, 11],
+        minor:    [0, 2, 3, 5, 7, 8, 10],
+        pentatonic: [0, 2, 4, 7, 9],
+        chromatic: [0,1,2,3,4,5,6,7,8,9,10,11]
+      };
+
+      const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+      const semitones = scales[scale] || scales.major;
+
+      for (let i = 0; i < semitones.length; i++) {
+        const semitone = semitones[i];
+        const midi = 60 + semitone; // comenzar en C4
+        const freq = 440 * Math.pow(2, (midi - 69) / 12);
+        const percent = (freq - minFreq) / (maxFreq - minFreq);
+        if (percent >= 0 && percent <= 1) {
+          const y = canvas.height * (1 - percent);
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(canvas.width, y);
+          ctx.stroke();
+          ctx.fillStyle = 'rgba(255,255,255,0.2)';
+          ctx.font = '12px sans-serif';
+          ctx.fillText(noteNames[semitone], 10, y - 5);
+        }
+      }
+        }
+      }
+    }
+      }
+    }
+
+    function drawTouches() {
+      drawGuideLines();
       for (let id in touches) {
         const t = touches[id];
         const freq = t.oscs[0].osc.frequency.value;
